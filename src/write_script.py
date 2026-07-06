@@ -324,7 +324,14 @@ def main():
     path = os.path.join(outdir, "script.json")
     json.dump(data, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
-    history.append({"date": today, "sujet": data.get("sujet", data.get("titre", "")), "source": source})
+    try:
+        from zoneinfo import ZoneInfo
+        heure = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
+    except Exception:
+        off = 2 if 4 <= datetime.datetime.utcnow().month <= 10 else 1
+        heure = (datetime.datetime.utcnow() + datetime.timedelta(hours=off)).hour
+    history.append({"date": today, "heure": heure,
+                    "sujet": data.get("sujet", data.get("titre", "")), "source": source})
     save_history(history)
 
     print("[cerveau: %s] sujet: %s" % (source, data.get("sujet", data.get("titre"))))
