@@ -133,13 +133,15 @@ def make_ai_background(path, prompt, seed):
     import io
     import urllib.parse
     import requests
+    from PIL import ImageOps
     url = ("https://image.pollinations.ai/prompt/%s?width=%d&height=%d&nologo=true&seed=%d"
            % (urllib.parse.quote(prompt[:300]), BG_W, BG_H, seed % 100000))
     try:
         r = requests.get(url, timeout=90)
         r.raise_for_status()
         img = Image.open(io.BytesIO(r.content)).convert("RGB")
-        img = img.resize((BG_W, BG_H))
+        # recadrage "cover" : on remplit le 9:16 sans JAMAIS déformer (léger cadrage haut)
+        img = ImageOps.fit(img, (BG_W, BG_H), method=Image.LANCZOS, centering=(0.5, 0.4))
         # scrim sombre + dégradé bas pour que les sous-titres blancs ressortent
         dark = Image.new("RGB", (BG_W, BG_H), (0, 0, 0))
         img = Image.blend(img, dark, 0.42)
