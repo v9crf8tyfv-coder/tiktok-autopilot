@@ -125,6 +125,36 @@ def hsv_rgb(h, s, v):
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
+def make_ai_background(path, prompt, seed):
+    """Image IA gratuite (Pollinations, sans clé) assombrie pour lisibilité du texte.
+
+    Renvoie True si l'image a bien été récupérée, False sinon (l'appelant garde le dégradé).
+    """
+    import io
+    import urllib.parse
+    import requests
+    url = ("https://image.pollinations.ai/prompt/%s?width=%d&height=%d&nologo=true&seed=%d"
+           % (urllib.parse.quote(prompt[:300]), BG_W, BG_H, seed % 100000))
+    try:
+        r = requests.get(url, timeout=90)
+        r.raise_for_status()
+        img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        img = img.resize((BG_W, BG_H))
+        # scrim sombre + dégradé bas pour que les sous-titres blancs ressortent
+        dark = Image.new("RGB", (BG_W, BG_H), (0, 0, 0))
+        img = Image.blend(img, dark, 0.42)
+        grad = Image.new("L", (1, BG_H))
+        for y in range(BG_H):
+            grad.putpixel((0, y), int(210 * (y / BG_H) ** 1.6))
+        grad = grad.resize((BG_W, BG_H))
+        img = Image.composite(dark, img, grad)
+        img.save(path, quality=90)
+        return True
+    except Exception as e:
+        print("   (image IA indisponible: %s → dégradé)" % str(e)[:80])
+        return False
+
+
 # ---------------------------------------------------------------- Sous-titres ASS
 
 ASS_HEADER = """[Script Info]
@@ -260,14 +290,21 @@ def main():
     else:
         shutil.copy(narration, audio_final)
 
-    # 3) Fonds animés par scène
-    print("[3/5] Fonds animés...")
+    # 3) Fonds animés par scène — parfois en images IA, sinon dégradés
+    ai_prob = float(script.get("ai_image_prob", os.environ.get("AI_IMAGE_PROB", "0.35")))
+    have_prompts = any(sc.get("image") for sc in scenes)
+    use_ai = have_prompts and random.random() < ai_prob
+    print("[3/5] Fonds animés (%s)..." % ("images IA" if use_ai else "dégradés"))
     seg_files = []
     base_hue = random.randint(0, 359)
     for i, (sc, dur) in enumerate(zip(scenes, scene_durs)):
         hue = sc.get("hue", (base_hue + i * 47) % 360)
         bg = os.path.join(work, "bg%02d.jpg" % i)
-        make_background(bg, hue, seed=hash(slug) + i)
+        made = False
+        if use_ai and sc.get("image"):
+            made = make_ai_background(bg, sc["image"], seed=hash(slug) + i * 7919)
+        if not made:
+            make_background(bg, hue, seed=hash(slug) + i)
         seg = os.path.join(work, "seg%02d.mp4" % i)
         frames = max(int(math.ceil(dur * FPS)), 1)
         zoom_in = i % 2 == 0
