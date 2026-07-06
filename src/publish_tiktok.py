@@ -27,7 +27,10 @@ import requests
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN_FILE = os.path.join(ROOT, "data", "tiktok_token.json")
 API = "https://open.tiktokapis.com/v2"
-REDIRECT_URI = "https://localhost:8765/callback"  # à déclarer dans l'app TikTok
+REDIRECT_URI = os.environ.get(
+    "TIKTOK_REDIRECT_URI",
+    "https://v9crf8tyfv-coder.github.io/tiktok-autopilot/callback.html",
+)
 
 
 def load_env():
@@ -44,6 +47,8 @@ def load_env():
 
 
 def notify(title, message):
+    if sys.platform != "darwin":
+        return  # pas de notification macOS en cloud (Linux)
     subprocess.run(["osascript", "-e",
                     'display notification "%s" with title "%s" sound name "Glass"'
                     % (message.replace('"', "'"), title.replace('"', "'"))])
@@ -54,7 +59,8 @@ def fallback(video, caption):
     print("Vidéo prête : %s" % video)
     print("Légende : %s" % caption[:120])
     notify("TikTok Autopilot", "Vidéo du jour prête à poster ! 🎬")
-    subprocess.run(["open", "-R", video])
+    if sys.platform == "darwin":
+        subprocess.run(["open", "-R", video])
     return 0
 
 
@@ -142,7 +148,7 @@ def publish(env, video, caption):
         endpoint, body = "/post/publish/video/init/", {
             "post_info": {
                 "title": caption[:2200],
-                "privacy_level": env.get("TIKTOK_PRIVACY", "SELF_ONLY"),
+                "privacy_level": env.get("TIKTOK_PRIVACY", "PUBLIC_TO_EVERYONE"),
                 "disable_duet": False, "disable_comment": False, "disable_stitch": False,
             },
             "source_info": {"source": "FILE_UPLOAD", "video_size": size,

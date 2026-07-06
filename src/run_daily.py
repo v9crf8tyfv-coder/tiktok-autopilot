@@ -50,6 +50,14 @@ def main():
         caption = open(caption_file, encoding="utf-8").read().strip() if os.path.exists(caption_file) else ""
 
         step("publication", ["src/publish_tiktok.py", video, caption])
+
+        # Livraison Discord (si webhook configuré) — toujours, en plus de la publication
+        if os.environ.get("DISCORD_WEBHOOK"):
+            try:
+                step("livraison Discord", ["src/deliver_discord.py", video, caption_file])
+            except Exception as e:
+                log("livraison Discord ignorée: %s" % e)
+
         log("✅ Terminé : %s" % os.path.basename(video))
         return 0
     except Exception as e:

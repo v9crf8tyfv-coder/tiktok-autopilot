@@ -3,10 +3,11 @@ name: TikTok Autopilot quotidien
 # Tourne sur les serveurs GitHub (gratuit) — ton PC peut être ÉTEINT.
 on:
   schedule:
-    # 16:00 UTC = 18:00 heure de Paris en été (17:00 en hiver).
-    # Pour changer l'heure de publication, modifie cette ligne.
-    - cron: "0 16 * * *"
-  workflow_dispatch: {}   # bouton "Run workflow" pour tester à la demande
+    # Plusieurs créneaux UTC couvrant les meilleures heures FR (11h / 18h / 19h Paris,
+    # été comme hiver). Le garde-fou "should_publish" ne laisse passer que le
+    # meilleur créneau du jour, une seule fois. Modifiable via best_time.py.
+    - cron: "0 9,10,16,17,18 * * *"
+  workflow_dispatch: {}   # bouton "Run workflow" pour publier à la demande
 
 concurrency:
   group: autopilot
@@ -18,6 +19,8 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,14 +28,23 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Garde-fou léger (sans dépendances) : est-ce l'heure optimale du jour ?
+      - name: Heure optimale ?
+        id: guard
+        run: |
+          if python src/should_publish.py; then echo "go=1" >> "$GITHUB_OUTPUT"; else echo "go=0" >> "$GITHUB_OUTPUT"; fi
+
       - name: Dépendances système (police + ffmpeg)
+        if: steps.guard.outputs.go == '1'
         run: sudo apt-get update && sudo apt-get install -y fonts-liberation
 
       - name: Dépendances Python
+        if: steps.guard.outputs.go == '1'
         run: pip install -r requirements.txt
 
       # Persiste le jeton TikTok d'un jour à l'autre (rafraîchi automatiquement)
       - name: Restaurer le jeton TikTok
+        if: steps.guard.outputs.go == '1'
         uses: actions/cache/restore@v4
         with:
           path: data/tiktok_token.json
@@ -40,7 +52,8 @@ jobs:
           restore-keys: |
             tiktok-token-
 
-      - name: Générer + publier la vidéo du jour
+      - name: Analyser le marché, générer et PUBLIER (public) la vidéo du jour
+        if: steps.guard.outputs.go == '1'
         env:
           NICHE: ${{ vars.NICHE }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
@@ -50,19 +63,21 @@ jobs:
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
           TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
           TIKTOK_MODE: ${{ vars.TIKTOK_MODE }}
+          TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           FONT_NAME: "Liberation Sans"
           FONT_FILE: "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
         run: python src/run_daily.py
 
       - name: Sauvegarder le jeton TikTok rafraîchi
-        if: always()
+        if: always() && steps.guard.outputs.go == '1'
         uses: actions/cache/save@v4
         with:
           path: data/tiktok_token.json
           key: tiktok-token-${{ github.run_id }}
 
       - name: Mémoriser les sujets déjà traités
-        if: always()
+        if: always() && steps.guard.outputs.go == '1'
         run: |
           git config user.name "autopilot-bot"
           git config user.email "autopilot@users.noreply.github.com"
@@ -71,7 +86,7 @@ jobs:
           git push || echo "push ignoré"
 
       - name: Garder la vidéo du jour (téléchargeable dans l'onglet Actions)
-        if: always()
+        if: always() && steps.guard.outputs.go == '1'
         uses: actions/upload-artifact@v4
         with:
           name: video-du-jour

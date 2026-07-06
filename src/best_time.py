@@ -15,12 +15,14 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Créneaux FR par jour de semaine (0 = lundi) -> heures conseillées, la 1re = préférée
+# La 1re heure de chaque jour est le créneau retenu ; elle doit faire partie
+# des créneaux planifiés dans le workflow (11, 18 ou 19 h Paris).
 DEFAULT_SLOTS = {
-    0: [18, 12, 20],
-    1: [18, 12, 20],
-    2: [18, 13, 20],
-    3: [18, 12, 21],
-    4: [17, 19, 12],   # vendredi : un peu plus tôt
+    0: [18, 12, 20],   # lundi
+    1: [18, 12, 20],   # mardi
+    2: [18, 13, 20],   # mercredi
+    3: [18, 12, 21],   # jeudi
+    4: [18, 19, 12],   # vendredi
     5: [11, 19, 21],   # samedi
     6: [19, 11, 20],   # dimanche
 }
