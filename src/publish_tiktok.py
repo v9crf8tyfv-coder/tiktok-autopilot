@@ -60,18 +60,30 @@ def fallback(video, caption):
 
 # ------------------------------------------------------------- OAuth
 
+def auth_url(env):
+    key = env.get("TIKTOK_CLIENT_KEY")
+    return ("https://www.tiktok.com/v2/auth/authorize/?client_key=%s"
+            "&scope=video.publish,video.upload&response_type=code&redirect_uri=%s&state=autopilot"
+            % (key, urllib.parse.quote(REDIRECT_URI, safe="")))
+
+
 def auth_flow(env):
     key = env.get("TIKTOK_CLIENT_KEY")
     secret = env.get("TIKTOK_CLIENT_SECRET")
     if not (key and secret):
         print("Renseigne d'abord TIKTOK_CLIENT_KEY et TIKTOK_CLIENT_SECRET dans config.env")
         return 1
-    url = ("https://www.tiktok.com/v2/auth/authorize/?client_key=%s"
-           "&scope=video.publish,video.upload&response_type=code&redirect_uri=%s&state=autopilot"
-           % (key, urllib.parse.quote(REDIRECT_URI, safe="")))
-    print("1) Ouvre cette URL, connecte-toi et autorise :\n\n%s\n" % url)
-    print("2) Après autorisation tu seras redirigé vers une URL localhost (page d'erreur, normal).")
-    code = input("3) Colle ici le paramètre ?code=... de cette URL : ").strip()
+    print("1) Ouvre cette URL, connecte-toi avec TON compte et autorise :\n\n%s\n" % auth_url(env))
+    print("2) Tu seras redirigé vers une URL localhost (page d'erreur = NORMAL).")
+    code = input("3) Colle ici le code (paramètre code=... de l'URL) : ").strip()
+    return exchange_code(env, code)
+
+
+def exchange_code(env, code):
+    """Échange le code d'autorisation contre un jeton (utilisable non-interactif)."""
+    key = env.get("TIKTOK_CLIENT_KEY")
+    secret = env.get("TIKTOK_CLIENT_SECRET")
+    code = urllib.parse.unquote(code).split("code=")[-1].split("&")[0].split("*")[0]
     r = requests.post(API + "/oauth/token/", data={
         "client_key": key, "client_secret": secret, "code": code,
         "grant_type": "authorization_code", "redirect_uri": REDIRECT_URI,
@@ -83,7 +95,8 @@ def auth_flow(env):
     tok["obtained_at"] = int(time.time())
     os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
     json.dump(tok, open(TOKEN_FILE, "w"))
-    print("✅ Connecté. Jeton enregistré dans data/tiktok_token.json")
+    print("✅ Connecté ! Jeton enregistré.")
+    print("REFRESH_TOKEN=%s" % tok.get("refresh_token", ""))
     return 0
 
 
@@ -181,6 +194,11 @@ def main():
     env = load_env()
     if len(sys.argv) > 1 and sys.argv[1] == "--auth":
         return auth_flow(env)
+    if len(sys.argv) > 1 and sys.argv[1] == "--url":
+        print(auth_url(env))
+        return 0
+    if len(sys.argv) > 2 and sys.argv[1] == "--exchange":
+        return exchange_code(env, sys.argv[2])
     if len(sys.argv) < 3:
         print(__doc__)
         return 1
