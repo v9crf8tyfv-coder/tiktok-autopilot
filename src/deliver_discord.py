@@ -15,11 +15,42 @@ Usage : venv/bin/python src/deliver_discord.py <video.mp4> [caption.txt]
 """
 import json
 import os
+import re
+import subprocess
 import sys
+import tempfile
 
 import requests
 
 API = "https://discord.com/api/v10"
+MAX_MB = float(os.environ.get("DISCORD_MAX_MB", "9"))
+
+
+def fit_discord(video):
+    """Compresse la vidéo sous la limite Discord si besoin (garde le 9:16)."""
+    if os.path.getsize(video) <= MAX_MB * 1_000_000:
+        return video
+    try:
+        import imageio_ffmpeg
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+        p = subprocess.run([ff, "-i", video], capture_output=True)
+        m = re.search(rb"Duration: (\d+):(\d+):(\d+\.\d+)", p.stderr)
+        dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else 60.0
+        # budget bits = 90% de la limite ; on réserve 128k audio
+        total_kbps = (MAX_MB * 0.9 * 8000) / dur
+        vkbps = max(int(total_kbps - 128), 300)
+        out = os.path.join(tempfile.gettempdir(), "discord_" + os.path.basename(video))
+        subprocess.run([ff, "-y", "-i", video, "-c:v", "libx264", "-b:v", "%dk" % vkbps,
+                        "-maxrate", "%dk" % int(vkbps * 1.3), "-bufsize", "%dk" % (vkbps * 2),
+                        "-preset", "veryfast", "-c:a", "aac", "-b:a", "128k",
+                        "-movflags", "+faststart", out],
+                       capture_output=True)
+        if os.path.exists(out) and os.path.getsize(out) <= MAX_MB * 1_000_000:
+            print("   (vidéo compressée pour Discord: %.1f Mo)" % (os.path.getsize(out) / 1e6))
+            return out
+    except Exception as e:
+        print("   (compression échouée: %s)" % str(e)[:80])
+    return video
 
 
 def parse_caption(caption_file):
@@ -39,6 +70,7 @@ def post_via_bot(video, sujet, tags):
     role = os.environ.get("DISCORD_ROLE_ID", "").strip()
     headers = {"Authorization": "Bot " + token}
 
+    video = fit_discord(video)
     content = ("🔔 <@&%s>\n" % role if role else "") + "🎬 **Nouvelle vidéo TikTok prête !**"
     embed = {
         "title": sujet,
