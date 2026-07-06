@@ -280,7 +280,7 @@ def main():
 
     music_dir = os.path.join(ROOT, "assets", "music")
     musics = [os.path.join(music_dir, m) for m in sorted(os.listdir(music_dir))
-              if m.lower().endswith((".mp3", ".m4a", ".wav"))]
+              if m.lower().endswith((".mp3", ".m4a", ".wav"))] if os.path.isdir(music_dir) else []
     audio_final = os.path.join(work, "mix.m4a")
     if musics:
         music = random.choice(musics)
