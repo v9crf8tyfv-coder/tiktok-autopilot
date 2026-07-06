@@ -51,8 +51,8 @@ def main():
 
         step("publication", ["src/publish_tiktok.py", video, caption])
 
-        # Livraison Discord (si webhook configuré) — toujours, en plus de la publication
-        if os.environ.get("DISCORD_WEBHOOK"):
+        # Livraison Discord (bot ou webhook) — toujours, en plus de la publication
+        if os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("DISCORD_WEBHOOK"):
             try:
                 step("livraison Discord", ["src/deliver_discord.py", video, caption_file])
             except Exception as e:
