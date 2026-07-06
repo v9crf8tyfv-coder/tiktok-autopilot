@@ -15,6 +15,8 @@ import random
 import re
 import sys
 
+import requests
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import llm  # noqa: E402
 
@@ -54,6 +56,41 @@ def save_history(hist):
               ensure_ascii=False, indent=2)
 
 
+def wiki_extract(title):
+    """Intro de l'article Wikipédia FR (faits vérifiés) pour ancrer le script."""
+    try:
+        r = requests.get("https://fr.wikipedia.org/w/api.php", params={
+            "action": "query", "prop": "extracts", "exintro": 1, "explaintext": 1,
+            "redirects": 1, "titles": title, "format": "json", "exchars": 1500,
+        }, headers={"User-Agent": "TikTokAutopilot/1.0"}, timeout=20)
+        pages = r.json()["query"]["pages"]
+        for _, page in pages.items():
+            txt = page.get("extract", "").strip()
+            if len(txt) >= 200:
+                return re.sub(r"\s+", " ", txt)
+    except Exception:
+        pass
+    return None
+
+
+def pick_grounded_subject(trends, history):
+    """Choisit le sujet le plus tendance non encore traité + sa source Wikipédia.
+
+    Le marché décide (ordre des tendances) ; l'historique évite les doublons exacts ;
+    Wikipédia fournit les faits pour empêcher l'IA d'inventer.
+    """
+    done = " ".join(h.get("sujet", "").lower() for h in history)
+    candidates = [a["article"] for a in trends.get("wikipedia_top_fr", []) if a.get("article")]
+    candidates += [t["sujet"] for t in trends.get("google_trends_fr", []) if t.get("sujet")]
+    for cand in candidates:
+        if cand.lower() in done:
+            continue
+        extract = wiki_extract(cand)
+        if extract:
+            return cand, extract
+    return (candidates[0] if candidates else None), None
+
+
 def trends_digest(trends):
     lines = []
     for t in trends.get("google_trends_fr", [])[:10]:
@@ -70,24 +107,30 @@ PROMPT = """Tu es un scénariste TikTok viral francophone expert. Écris le scri
 
 NICHE DU COMPTE : {niche}
 DATE : {date}
+SUJET IMPOSÉ (choisi car très tendance aujourd'hui) : {subject}
 
-TENDANCES DU JOUR (choisis-en UNE, la plus virale ET liée à la niche, à faible saturation) :
-{digest}
-
-SUJETS DÉJÀ TRAITÉS (INTERDITS, trouve autre chose) :
-{history}
+SOURCE FIABLE (Wikipédia) — TU NE PEUX UTILISER QUE DES FAITS PRÉSENTS ICI :
+\"\"\"
+{source}
+\"\"\"
 
 RÈGLES STRICTES :
-- LE MARCHÉ DÉCIDE : choisis ce qui est chaud MAINTENANT. Si un thème (ex. football) domine
-  les tendances plusieurs jours de suite, RESTE sur ce thème — change juste d'angle/de sujet précis.
-  N'évite un thème porteur QUE si les "sujets déjà traités" contiennent exactement le même angle.
+- ANCRAGE ABSOLU : chaque fait énoncé DOIT provenir de la SOURCE ci-dessus. Si une info n'y est
+  pas, tu ne l'écris pas. INTERDICTION TOTALE d'inventer un chiffre, une date, un nom, une citation.
+  Mieux vaut un fait simple mais VRAI qu'un fait spectaculaire mais faux.
 - Format gagnant : "3 faits fous sur…", "Personne ne sait que…", "Le vrai chiffre derrière…", classement, histoire vraie étonnante.
 - HOOK < 3 s : la 1re phrase (8-14 mots) doit créer un manque de curiosité. JAMAIS "Bonjour".
-- 210 à 240 mots AU TOTAL (pour durer 50-60 s). 4 à 6 scènes, une idée par scène, phrases courtes et orales.
-- Mets 2 à 4 mots-clés forts par scène entre *astérisques* (chiffres, noms, mots choc) — jamais de mots-outils (le, la, de, et…).
+- LONGUEUR IMPÉRATIVE : 210 à 240 mots AU TOTAL. 4 à 6 scènes, CHAQUE scène = 2 à 3 phrases
+  (40 à 55 mots par scène). Une vidéo trop courte est un ÉCHEC.
+- EXACTEMENT 2 à 3 mots-clés par scène entre *astérisques*, uniquement sur des CHIFFRES ou des NOMS PROPRES.
+  Jamais d'astérisques sur des mots de remplissage.
+- INTERDIT : le langage de remplissage ("oups", "oui oui", "c'est du lourd", "promis", "la folie"),
+  les onomatopées, les répétitions. Ton clair, fluide, crédible, comme un bon documentaire punchy.
 - Termine par une boucle ou un CTA ("Abonne-toi, un fait comme ça tous les jours à la même heure").
 - Évite tout sujet sensible (drames en cours, santé grave, politique clivante, violence).
-- Info vérifiable et exacte ; si tu n'es pas sûr d'un chiffre, reste prudent.
+- EXACTITUDE ABSOLUE : n'invente JAMAIS de chiffre, de record, de citation ou d'événement.
+  Utilise uniquement des faits largement connus et vérifiables. Dans le doute, reste général
+  (ex. "des dizaines de millions" plutôt qu'un chiffre précis faux). Pas de comparaisons absurdes.
 
 RÉPONDS UNIQUEMENT avec ce JSON (aucun texte autour) :
 {{
@@ -105,26 +148,65 @@ RÉPONDS UNIQUEMENT avec ce JSON (aucun texte autour) :
   décidera lui-même s'il l'utilise en image IA ou garde un fond dégradé)."""
 
 
-def gen_with_llm(env, niche, trends, history):
-    prompt = PROMPT.format(
-        niche=niche,
-        date=datetime.date.today().isoformat(),
-        digest=trends_digest(trends) or "(pas de tendances récupérées, choisis un sujet intemporel de la niche)",
-        history="\n".join("- %s" % h.get("sujet", "") for h in history[-40:]) or "(aucun)",
-    )
-    raw = llm.generate(prompt, env=env)
-    data = json.loads(raw)
-    # validations minimales
+def _wordcount(data):
+    return sum(len(re.findall(r"\w+", sc.get("texte", ""))) for sc in data.get("scenes", []))
+
+
+def _limit_emphasis(text, max_spans=3):
+    """Garde au plus max_spans mots surlignés par scène ; déballe le surplus."""
+    spans = list(re.finditer(r"\*(.+?)\*", text))
+    for m in spans[max_spans:]:
+        text = text.replace(m.group(0), m.group(1), 1)
+    return text
+
+
+def _clean(data, env):
     assert data.get("scenes") and 3 <= len(data["scenes"]) <= 7, "nombre de scènes invalide"
     for sc in data["scenes"]:
         assert sc.get("texte"), "scène sans texte"
+        sc["texte"] = _limit_emphasis(sc["texte"].strip())
         sc.setdefault("hue", random.randint(0, 359))
     data.setdefault("voix", env.get("VOICE", "fr-FR-RemyMultilingualNeural"))
     data.setdefault("rate", "+12%")
     data.setdefault("titre", "video-" + datetime.date.today().isoformat())
-    data.setdefault("caption", data.get("sujet", ""))
+    # les astérisques ne servent qu'aux sous-titres, pas à la légende
+    data["caption"] = re.sub(r"\*", "", data.get("caption") or data.get("sujet", "")).strip()
     data.setdefault("hashtags", ["#pourtoi", "#fyp"])
     return data
+
+
+UNGROUNDED = """Tu es un scénariste TikTok viral francophone expert. Écris le script d'UNE vidéo.
+
+NICHE : {niche}
+DATE : {date}
+SUJET IMPOSÉ (très tendance aujourd'hui) : {subject}
+
+Aucune source fournie : utilise UNIQUEMENT des faits très largement connus et incontestables
+sur ce sujet. N'invente AUCUN chiffre/date/citation précis ; dans le doute, reste général.
+"""
+
+
+def gen_with_llm(env, niche, subject, source, history):
+    today = datetime.date.today().isoformat()
+    if source:
+        base = PROMPT.format(niche=niche, date=today, subject=subject, source=source)
+    else:
+        # tronc commun : on réutilise les règles de PROMPT après l'en-tête ancré
+        rules = PROMPT.split("RÈGLES STRICTES :", 1)[1]
+        base = UNGROUNDED.format(niche=niche, date=today, subject=subject) + "\nRÈGLES STRICTES :" + rules
+    best = None
+    # jusqu'à 3 essais : on garde le script le plus long tant qu'il n'atteint pas la cible
+    for attempt in range(3):
+        prompt = base if attempt == 0 else base + (
+            "\n\nATTENTION : ta version précédente ne faisait que %d mots. "
+            "Refais-la BEAUCOUP plus longue : 210-240 mots, 2-3 phrases par scène." % _wordcount(best)
+        )
+        data = _clean(json.loads(llm.generate(prompt, env=env)), env)
+        if best is None or _wordcount(data) > _wordcount(best):
+            best = data
+        if _wordcount(best) >= 190:
+            break
+    return best
 
 
 TEMPLATE_TOPICS = [
@@ -219,12 +301,18 @@ def main():
 
     present = is_presentation_day(env, history)
     try:
+        prov = (llm.active_provider(env) or {}).get("name", "llm")
         if present:
             data = gen_presentation(env, niche)
             source = "presentation"
         else:
-            data = gen_with_llm(env, niche, trends, history)
-            source = "gemini"
+            subject, src_text = pick_grounded_subject(trends, history)
+            if not subject:
+                raise RuntimeError("aucun sujet tendance exploitable")
+            print("   sujet imposé: %s (%s)" % (subject, "ancré Wikipédia" if src_text else "sans source"))
+            data = gen_with_llm(env, niche, subject, src_text, history)
+            data.setdefault("sujet", subject)
+            source = prov + ("+wiki" if src_text else "")
     except Exception as e:
         print("⚠️  LLM indisponible (%s) → gabarit local." % e)
         data = gen_template(env, niche, trends, history)
