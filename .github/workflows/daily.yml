@@ -65,6 +65,9 @@ jobs:
           TIKTOK_MODE: ${{ vars.TIKTOK_MODE }}
           TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          DISCORD_ROLE_ID: ${{ vars.DISCORD_ROLE_ID }}
           FONT_NAME: "Liberation Sans"
           FONT_FILE: "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
         run: python src/run_daily.py
