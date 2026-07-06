@@ -1,0 +1,14 @@
+# Secrets — ne JAMAIS pousser en ligne
+config.env
+data/tiktok_token.json
+
+# Environnement / sorties
+venv/
+output/
+logs/
+data/trends-*.json
+assets/music/
+assets/fonts/
+__pycache__/
+*.pyc
+.DS_Store
