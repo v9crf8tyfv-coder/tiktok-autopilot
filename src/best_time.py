@@ -1,68 +1,42 @@
 #!/usr/bin/env python3
-"""Meilleure heure de publication (France), avec apprentissage optionnel.
+"""Meilleures heures de publication (France) — 2 créneaux par jour.
 
-Base : créneaux à forte activité TikTok FR (source : études d'engagement 2025-2026).
-Affinage : si data/perf.json existe (vues par heure de tes propres posts), on
-privilégie tes heures qui performent le mieux. 100 % gratuit, aucune API tierce.
-
-perf.json (facultatif, à remplir à la main ou plus tard automatiquement) :
-  [{"date": "2026-07-06", "heure": 19, "vues": 2400}, ...]
+Créneaux à forte activité TikTok FR (midi + soir). Le système publie une vidéo
+à chacun de ces créneaux, chaque jour.
 """
 import datetime
 import json
-import os
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Créneaux FR par jour de semaine (0 = lundi) -> heures conseillées, la 1re = préférée
-# La 1re heure de chaque jour est le créneau retenu ; elle doit faire partie
-# des créneaux planifiés dans le workflow (11, 18 ou 19 h Paris).
-DEFAULT_SLOTS = {
-    0: [18, 12, 20],   # lundi
-    1: [18, 12, 20],   # mardi
-    2: [18, 13, 20],   # mercredi
-    3: [18, 12, 21],   # jeudi
-    4: [18, 19, 12],   # vendredi
-    5: [11, 19, 21],   # samedi
-    6: [19, 11, 20],   # dimanche
+# Pour chaque jour (0 = lundi) : les heures FR où l'on publie (midi puis soir).
+DAILY_SLOTS = {
+    0: [12, 18],   # lundi
+    1: [12, 18],   # mardi
+    2: [12, 18],   # mercredi
+    3: [12, 18],   # jeudi
+    4: [12, 18],   # vendredi
+    5: [11, 18],   # samedi
+    6: [12, 19],   # dimanche
 }
 
 
-def learned_best_hour():
-    path = os.path.join(ROOT, "data", "perf.json")
-    if not os.path.exists(path):
-        return None
-    try:
-        rows = json.load(open(path))
-        agg = {}
-        for r in rows:
-            h = int(r["heure"])
-            agg.setdefault(h, []).append(float(r.get("vues", 0)))
-        if not agg:
-            return None
-        means = {h: sum(v) / len(v) for h, v in agg.items() if len(v) >= 2}
-        return max(means, key=means.get) if means else None
-    except Exception:
-        return None
+def daily_slots(day=None):
+    day = day if day is not None else datetime.date.today().weekday()
+    return DAILY_SLOTS[day]
 
 
 def best_hour(day=None):
-    day = day if day is not None else datetime.date.today().weekday()
-    learned = learned_best_hour()
-    if learned is not None:
-        return learned
-    return DEFAULT_SLOTS[day][0]
+    """Première heure du jour (compat)."""
+    return daily_slots(day)[0]
 
 
 def main():
     today = datetime.date.today()
-    h = best_hour(today.weekday())
-    src = "tes stats (perf.json)" if learned_best_hour() is not None else "créneaux FR par défaut"
+    slots = daily_slots(today.weekday())
     print(json.dumps({
         "date": today.isoformat(),
-        "meilleure_heure_locale_FR": h,
-        "source": src,
-        "conseil": "Publier autour de %dh (heure de Paris)." % h,
+        "creneaux_FR": slots,
+        "conseil": "Publier à %s (heure de Paris)." % " et ".join("%dh" % h for h in slots),
     }, ensure_ascii=False, indent=2))
 
 
