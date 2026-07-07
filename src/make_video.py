@@ -347,6 +347,23 @@ def main():
          "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
          "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", final])
 
+    # 6) Calage précis de la durée dans [DUR_MIN, DUR_MAX] (défaut 60-62 s)
+    dur_min = float(os.environ.get("DUR_MIN", "60"))
+    dur_max = float(os.environ.get("DUR_MAX", "62"))
+    target = (dur_min + dur_max) / 2.0
+    dur = media_duration(final)
+    if not (dur_min <= dur <= dur_max):
+        # on accélère/ralentit UNIFORMÉMENT vidéo + audio (sous-titres restent synchro)
+        speed = max(0.90, min(1.12, dur / target))
+        print("   calage durée: %.1fs → ~%.1fs (x%.3f)" % (dur, dur / speed, speed))
+        tmp = os.path.join(work, "final_timed.mp4")
+        run([FFMPEG, "-y", "-i", final,
+             "-filter_complex", "[0:v]setpts=PTS/%f[v];[0:a]atempo=%f[a]" % (speed, speed),
+             "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium",
+             "-crf", "19", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+             "-movflags", "+faststart", tmp])
+        os.replace(tmp, final)
+
     # légende + hashtags prêts à coller
     caption = script.get("caption", "").strip()
     tags = " ".join(script.get("hashtags", []))
@@ -359,8 +376,8 @@ def main():
     dur = media_duration(final)
     size = os.path.getsize(final) / 1e6
     print("\n✅ %s  (%.1fs, %.1f Mo)" % (final, dur, size))
-    if not 40 <= dur <= 65:
-        print("⚠️  Durée hors cible 45-60s : ajuster la longueur du script.")
+    if not dur_min <= dur <= dur_max:
+        print("⚠️  Durée %.1fs hors cible %.0f-%.0fs (script trop court/long, calage limité)." % (dur, dur_min, dur_max))
     return 0
 
 
