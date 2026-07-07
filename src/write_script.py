@@ -120,8 +120,9 @@ RÈGLES STRICTES :
   Mieux vaut un fait simple mais VRAI qu'un fait spectaculaire mais faux.
 - Format gagnant : "3 faits fous sur…", "Personne ne sait que…", "Le vrai chiffre derrière…", classement, histoire vraie étonnante.
 - HOOK < 3 s : la 1re phrase (8-14 mots) doit créer un manque de curiosité. JAMAIS "Bonjour".
-- LONGUEUR IMPÉRATIVE : 210 à 240 mots AU TOTAL. 4 à 6 scènes, CHAQUE scène = 2 à 3 phrases
-  (40 à 55 mots par scène). Une vidéo trop courte est un ÉCHEC.
+- LONGUEUR IMPÉRATIVE : la vidéo doit durer environ 60 SECONDES à l'oral → écris 235 à 255 mots
+  AU TOTAL. 5 à 6 scènes, CHAQUE scène = 2 à 3 phrases (45 à 55 mots par scène). Une vidéo
+  trop courte est un ÉCHEC : remplis bien chaque scène.
 - EXACTEMENT 2 à 3 mots-clés par scène entre *astérisques*, uniquement sur des CHIFFRES ou des NOMS PROPRES.
   Jamais d'astérisques sur des mots de remplissage.
 - INTERDIT : le langage de remplissage ("oups", "oui oui", "c'est du lourd", "promis", "la folie"),
