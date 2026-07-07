@@ -8,15 +8,15 @@ import datetime
 import json
 
 
-# Pour chaque jour (0 = lundi) : les heures FR où l'on publie (midi puis soir).
+# Pour chaque jour (0 = lundi) : les heures FR où l'on publie (midi / soir / nuit).
 DAILY_SLOTS = {
-    0: [12, 18],   # lundi
-    1: [12, 18],   # mardi
-    2: [12, 18],   # mercredi
-    3: [12, 18],   # jeudi
-    4: [12, 18],   # vendredi
-    5: [11, 18],   # samedi
-    6: [12, 19],   # dimanche
+    0: [12, 18, 21],   # lundi
+    1: [12, 18, 21],   # mardi
+    2: [12, 18, 21],   # mercredi
+    3: [12, 18, 21],   # jeudi
+    4: [12, 18, 21],   # vendredi
+    5: [11, 18, 21],   # samedi
+    6: [12, 19, 21],   # dimanche
 }
 
 
