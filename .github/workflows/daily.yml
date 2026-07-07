@@ -6,7 +6,7 @@ on:
     # Plusieurs créneaux UTC couvrant les meilleures heures FR (11h / 18h / 19h Paris,
     # été comme hiver). Le garde-fou "should_publish" ne laisse passer que le
     # meilleur créneau du jour, une seule fois. Modifiable via best_time.py.
-    - cron: "0 9,10,16,17,18 * * *"
+    - cron: "0 9,10,11,12,16,17,18,19,20,21 * * *"
   workflow_dispatch: {}   # bouton "Run workflow" pour publier à la demande
 
 concurrency:
