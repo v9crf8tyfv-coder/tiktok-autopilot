@@ -326,10 +326,14 @@ def main():
 
     try:
         from zoneinfo import ZoneInfo
-        heure = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
+        ph = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
     except Exception:
         off = 2 if 4 <= datetime.datetime.utcnow().month <= 10 else 1
-        heure = (datetime.datetime.utcnow() + datetime.timedelta(hours=off)).hour
+        ph = (datetime.datetime.utcnow() + datetime.timedelta(hours=off)).hour
+    # on enregistre le CRÉNEAU honoré (12 ou 18…), pas l'heure brute (retards GitHub)
+    import best_time as _bt
+    done = [int(h["heure"]) for h in history if h.get("date") == today and "heure" in h]
+    heure = _bt.current_slot(ph, done) or ph
     history.append({"date": today, "heure": heure,
                     "sujet": data.get("sujet", data.get("titre", "")), "source": source})
     save_history(history)
