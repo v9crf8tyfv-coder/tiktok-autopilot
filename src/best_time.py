@@ -30,6 +30,19 @@ def best_hour(day=None):
     return daily_slots(day)[0]
 
 
+def current_slot(hour, done_slots, day=None):
+    """Créneau à honorer maintenant, en tolérant les retards de GitHub (fenêtre 2h).
+
+    Un créneau S est "actif" pendant les heures S et S+1. On renvoie le créneau
+    actif le plus tardif pas encore fait aujourd'hui, sinon None (on saute).
+    """
+    done = set(int(s) for s in done_slots)
+    for s in sorted(daily_slots(day), reverse=True):
+        if s <= hour <= s + 1 and s not in done:
+            return s
+    return None
+
+
 def main():
     today = datetime.date.today()
     slots = daily_slots(today.weekday())
