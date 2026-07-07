@@ -30,15 +30,16 @@ def best_hour(day=None):
     return daily_slots(day)[0]
 
 
-def current_slot(hour, done_slots, day=None):
-    """Créneau à honorer maintenant, en tolérant les retards de GitHub (fenêtre 2h).
+def current_slot(now_dec, done_slots, day=None):
+    """Créneau à honorer maintenant. `now_dec` = heure décimale Paris (ex. 20.75 = 20h45).
 
-    Un créneau S est "actif" pendant les heures S et S+1. On renvoie le créneau
-    actif le plus tardif pas encore fait aujourd'hui, sinon None (on saute).
+    Pré-roll de 15 min AVANT le créneau (la création prend ~6 min → la vidéo tombe
+    pile à l'heure). Puis fenêtre de tolérance jusqu'à 1h après (retards GitHub).
+    On renvoie le créneau actif le plus tardif pas encore fait aujourd'hui, sinon None.
     """
     done = set(int(s) for s in done_slots)
     for s in sorted(daily_slots(day), reverse=True):
-        if s <= hour <= s + 1 and s not in done:
+        if (s - 0.25) <= now_dec <= (s + 1.0) and s not in done:
             return s
     return None
 
