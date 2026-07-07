@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Décide s'il faut générer+publier MAINTENANT (un des 2 créneaux du jour).
 
-Le workflow se déclenche à plusieurs heures ; ce garde-fou (stdlib seulement)
-laisse passer UNIQUEMENT aux 2 créneaux optimaux du jour, une fois par créneau.
+Robuste aux retards de GitHub Actions : chaque créneau reste "actif" pendant 2h
+(voir best_time.current_slot). Un créneau déjà honoré aujourd'hui n'est pas refait.
 
-Sortie : code 0 = on y va / code 1 = pas maintenant.
-FORCE=1 → toujours 0 (lancement manuel).
+Sortie : code 0 = on y va / code 1 = pas maintenant.  FORCE=1 → toujours 0.
 """
 import datetime
 import json
@@ -27,17 +26,16 @@ def paris_now():
         return datetime.datetime.utcnow() + datetime.timedelta(hours=off)
 
 
-def slot_done_today(hour):
-    """Vrai si une vidéo a déjà été faite pour ce créneau (cette heure) aujourd'hui."""
+def done_slots_today():
     p = os.path.join(ROOT, "data", "history.json")
     if not os.path.exists(p):
-        return False
+        return []
     try:
         hist = json.load(open(p, encoding="utf-8"))
         today = datetime.date.today().isoformat()
-        return any(h.get("date") == today and int(h.get("heure", -1)) == hour for h in hist)
+        return [int(h["heure"]) for h in hist if h.get("date") == today and "heure" in h]
     except Exception:
-        return False
+        return []
 
 
 def main():
@@ -45,14 +43,11 @@ def main():
         print("FORCE : publication immédiate.")
         return 0
     now = paris_now()
-    slots = best_time.daily_slots(now.weekday())
-    if now.hour not in slots:
-        print("Heure de Paris %dh ≠ créneaux du jour %s → on saute." % (now.hour, slots))
+    slot = best_time.current_slot(now.hour, done_slots_today(), now.weekday())
+    if slot is None:
+        print("Aucun créneau actif à %dh (Paris) → on saute." % now.hour)
         return 1
-    if slot_done_today(now.hour):
-        print("Créneau %dh déjà fait aujourd'hui → on saute." % now.hour)
-        return 1
-    print("Créneau optimal %dh (Paris) → on publie." % now.hour)
+    print("Créneau %dh actif (il est %dh Paris) → on publie." % (slot, now.hour))
     return 0
 
 
