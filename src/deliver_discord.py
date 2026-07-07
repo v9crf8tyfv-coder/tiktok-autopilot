@@ -71,16 +71,19 @@ def post_via_bot(video, sujet, tags):
     headers = {"Authorization": "Bot " + token}
 
     video = fit_discord(video)
-    content = ("🔔 <@&%s>\n" % role if role else "") + "🎬 **Nouvelle vidéo TikTok prête !**"
-    embed = {
-        "title": sujet,
-        "description": (tags + "\n\n" if tags else "") + "Télécharge-la et publie-la quand tu veux 👇",
-        "color": 0xFE2C55,
-        "footer": {"text": "TikTok Autopilot • générée automatiquement"},
-    }
+    # Légende + hashtags dans des blocs de code = "appuie pour copier" sur mobile
+    lines = []
+    if role:
+        lines.append("🔔 <@&%s>" % role)
+    lines.append("🎬 **Nouvelle vidéo TikTok prête !**")
+    lines.append("\n📝 **Légende** — appuie pour copier :")
+    lines.append("```\n%s\n```" % sujet)
+    if tags:
+        lines.append("🏷️ **Hashtags** — appuie pour copier :")
+        lines.append("```\n%s\n```" % tags)
+    content = "\n".join(lines)[:1990]
     payload = {
         "content": content,
-        "embeds": [embed],
         "allowed_mentions": {"parse": [], "roles": [role] if role else []},
         "attachments": [{"id": 0, "filename": os.path.basename(video)}],
     }
