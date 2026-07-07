@@ -43,11 +43,12 @@ def main():
         print("FORCE : publication immédiate.")
         return 0
     now = paris_now()
-    slot = best_time.current_slot(now.hour, done_slots_today(), now.weekday())
+    now_dec = now.hour + now.minute / 60.0
+    slot = best_time.current_slot(now_dec, done_slots_today(), now.weekday())
     if slot is None:
-        print("Aucun créneau actif à %dh (Paris) → on saute." % now.hour)
+        print("Aucun créneau actif à %02dh%02d (Paris) → on saute." % (now.hour, now.minute))
         return 1
-    print("Créneau %dh actif (il est %dh Paris) → on publie." % (slot, now.hour))
+    print("Créneau %dh actif (il est %02dh%02d Paris) → on publie." % (slot, now.hour, now.minute))
     return 0
 
 
