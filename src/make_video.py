@@ -137,7 +137,7 @@ def make_ai_background(path, prompt, seed):
     url = ("https://image.pollinations.ai/prompt/%s?width=%d&height=%d&nologo=true&seed=%d"
            % (urllib.parse.quote(prompt[:300]), BG_W, BG_H, seed % 100000))
     try:
-        r = requests.get(url, timeout=90)
+        r = requests.get(url, timeout=45)
         r.raise_for_status()
         img = Image.open(io.BytesIO(r.content)).convert("RGB")
         # recadrage "cover" : on remplit le 9:16 sans JAMAIS déformer (léger cadrage haut)
@@ -297,15 +297,20 @@ def main():
     ai_prob = float(script.get("ai_image_prob", os.environ.get("AI_IMAGE_PROB", "0.35")))
     have_prompts = any(sc.get("image") for sc in scenes)
     use_ai = have_prompts and random.random() < ai_prob
-    print("[3/5] Fonds animés (%s)..." % ("images IA" if use_ai else "dégradés"))
+    ai_budget = int(os.environ.get("AI_IMAGE_MAX", "6")) if use_ai else 0
+    ai_used = 0
+    print("[3/5] Fonds animés (%s)..." % ("mix images IA + dégradés" if use_ai else "dégradés"))
     seg_files = []
     base_hue = random.randint(0, 359)
     for i, (sc, dur) in enumerate(zip(scenes, scene_durs)):
         hue = sc.get("hue", (base_hue + i * 47) % 360)
         bg = os.path.join(work, "bg%02d.jpg" % i)
         made = False
-        if use_ai and sc.get("image"):
+        # 1 plan sur 2 en image IA (dont le hook), le reste en dégradé → dynamique ET rapide
+        if use_ai and sc.get("image") and ai_used < ai_budget and i % 2 == 0:
             made = make_ai_background(bg, sc["image"], seed=hash(slug) + i * 7919)
+            if made:
+                ai_used += 1
         if not made:
             make_background(bg, hue, seed=hash(slug) + i)
         seg = os.path.join(work, "seg%02d.mp4" % i)
