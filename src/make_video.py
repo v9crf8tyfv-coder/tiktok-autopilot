@@ -167,7 +167,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Cue,Arial Black,88,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,11,0,5,60,60,880,1
+Style: Cue,Arial Black,94,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,13,0,5,60,60,860,1
 Style: Hook,Arial Black,104,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,12,0,5,50,50,880,1
 
 [Events]
@@ -176,7 +176,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 YELLOW = r"{\c&H00E5FF&}"
 WHITE = r"{\c&HFFFFFF&}"
-POP = r"{\fad(60,40)\fscx88\fscy88\t(0,90,\fscx100\fscy100)}"
+# apparition "pop" avec léger rebond (dynamisme)
+POP = r"{\fad(35,30)\fscx74\fscy74\t(0,110,\fscx106\fscy106)\t(110,190,\fscx100\fscy100)}"
 
 
 def ass_time(t):
@@ -309,10 +310,20 @@ def main():
             make_background(bg, hue, seed=hash(slug) + i)
         seg = os.path.join(work, "seg%02d.mp4" % i)
         frames = max(int(math.ceil(dur * FPS)), 1)
-        zoom_in = i % 2 == 0
-        zexpr = ("min(1.0+0.0012*on,1.18)" if zoom_in else "max(1.18-0.0012*on,1.0)")
-        vf = ("scale=%d:%d,zoompan=z='%s':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=%dx%d:fps=%d"
-              % (BG_W, BG_H, zexpr, W, H, FPS))
+        # montage dynamique : "punch-in" rapide au début de chaque plan, puis alternance
+        # zoom avant / arrière + léger travelling → aucun plan ne paraît figé.
+        rng = random.Random(hash(slug) + i)
+        style = i % 3
+        if style == 0:       # punch-in : zoom rapide au début puis stabilise
+            zexpr = "if(lt(on,8),1.0+0.02*on,min(1.16+0.0008*on,1.28))"
+        elif style == 1:     # zoom arrière lent
+            zexpr = "max(1.26-0.0011*on,1.06)"
+        else:                # zoom avant lent
+            zexpr = "min(1.06+0.0013*on,1.30)"
+        px = "iw/2-(iw/zoom/2)+%d*sin(on/22)" % rng.randint(6, 16)   # micro travelling horizontal
+        py = "ih/2-(ih/zoom/2)"
+        vf = ("scale=%d:%d,zoompan=z='%s':x='%s':y='%s':d=1:s=%dx%d:fps=%d"
+              % (BG_W, BG_H, zexpr, px, py, W, H, FPS))
         run([FFMPEG, "-y", "-loop", "1", "-framerate", str(FPS), "-t", "%.3f" % dur, "-i", bg, "-vf", vf,
              "-frames:v", str(frames), "-c:v", "libx264", "-preset", "veryfast",
              "-crf", "20", "-pix_fmt", "yuv420p", seg])
