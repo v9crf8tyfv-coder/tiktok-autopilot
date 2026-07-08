@@ -77,7 +77,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
           DISCORD_ROLE_ID: ${{ vars.DISCORD_ROLE_ID }}
-          AI_IMAGE_PROB: "1"
+          AI_IMAGE_PROB: "0.6"
           FONT_NAME: "Liberation Sans"
           FONT_FILE: "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
         run: python src/run_daily.py
