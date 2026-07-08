@@ -103,50 +103,72 @@ def trends_digest(trends):
     return "\n".join(lines)
 
 
-PROMPT = """Tu es un scénariste TikTok viral francophone expert. Écris le script d'UNE vidéo.
+PROMPT = """Tu es un STRATÈGE VIRAL TikTok de génie (pas un simple rédacteur). Ta seule obsession :
+maximiser la RÉTENTION (que les gens regardent jusqu'au bout et re-regardent), les PARTAGES et les
+COMMENTAIRES. Tu connais parfaitement ce qui performe sur TikTok en ce moment : hooks choc,
+storytelling à tension, montage ultra-rythmé, boucles ouvertes. Tu écris le script d'UNE vidéo.
 
-NICHE DU COMPTE : {niche}
+CONTEXTE MARCHÉ : {niche}
 DATE : {date}
-SUJET IMPOSÉ (choisi car très tendance aujourd'hui) : {subject}
+SUJET (très tendance aujourd'hui) : {subject}
 
 SOURCE FIABLE (Wikipédia) — TU NE PEUX UTILISER QUE DES FAITS PRÉSENTS ICI :
 \"\"\"
 {source}
 \"\"\"
 
-RÈGLES STRICTES :
-- ANCRAGE ABSOLU : chaque fait énoncé DOIT provenir de la SOURCE ci-dessus. Si une info n'y est
-  pas, tu ne l'écris pas. INTERDICTION TOTALE d'inventer un chiffre, une date, un nom, une citation.
-  Mieux vaut un fait simple mais VRAI qu'un fait spectaculaire mais faux.
-- Format gagnant : "3 faits fous sur…", "Personne ne sait que…", "Le vrai chiffre derrière…", classement, histoire vraie étonnante.
-- HOOK < 3 s : la 1re phrase (8-14 mots) doit créer un manque de curiosité. JAMAIS "Bonjour".
-- LONGUEUR IMPÉRATIVE : la vidéo doit durer environ 60 SECONDES à l'oral → écris 235 à 255 mots
-  AU TOTAL. 5 à 6 scènes, CHAQUE scène = 2 à 3 phrases (45 à 55 mots par scène). Une vidéo
-  trop courte est un ÉCHEC : remplis bien chaque scène.
-- EXACTEMENT 2 à 3 mots-clés par scène entre *astérisques*, uniquement sur des CHIFFRES ou des NOMS PROPRES.
-  Jamais d'astérisques sur des mots de remplissage.
-- INTERDIT : le langage de remplissage ("oups", "oui oui", "c'est du lourd", "promis", "la folie"),
-  les onomatopées, les répétitions. Ton clair, fluide, crédible, comme un bon documentaire punchy.
-- Termine par une boucle ou un CTA ("Abonne-toi, un fait comme ça tous les jours à la même heure").
-- Évite tout sujet sensible (drames en cours, santé grave, politique clivante, violence).
-- EXACTITUDE ABSOLUE : n'invente JAMAIS de chiffre, de record, de citation ou d'événement.
-  Utilise uniquement des faits largement connus et vérifiables. Dans le doute, reste général
-  (ex. "des dizaines de millions" plutôt qu'un chiffre précis faux). Pas de comparaisons absurdes.
+=== STRATÉGIE VIRALE OBLIGATOIRE ===
+
+1) LE HOOK (2 PREMIÈRES SECONDES = 80% du succès)
+- La 1re scène est UNE phrase choc de 6 à 12 mots qui crée une curiosité BRÛLANTE ou une émotion forte.
+- INTERDIT : toute intro classique ("Bonjour", "Aujourd'hui on va parler de", "Saviez-vous que").
+- Techniques : promesse folle, chiffre choc, contradiction, question qui dérange, "Personne ne te dira
+  que…", "Ce que tu vois n'est pas…", ouvrir une boucle qu'on ne referme qu'à la fin.
+- La 1re phrase doit rendre IMPOSSIBLE de scroller.
+
+2) STRUCTURE = HISTOIRE (début → montée en tension → chute satisfaisante)
+- Après le hook : on relance la curiosité à CHAQUE scène (on donne un bout, on en promet un autre).
+- Montée en tension progressive, puis une révélation / chute qui récompense celui qui est resté.
+- Garde une INFO forte pour la toute fin ("et le plus dingue arrive maintenant").
+
+3) RYTHME ULTRA-DYNAMIQUE (RÈGLE STRICTE)
+- La scène 1 (hook) = UNE SEULE phrase de 6 à 12 mots. RIEN d'autre.
+- Ensuite MINIMUM 8 scènes (idéal 9 à 11). CHAQUE scène = UNE phrase courte (10 à 20 mots), 1 seule idée.
+- INTERDIT de mettre plusieurs phrases dans une même scène. Plus il y a de scènes, plus le montage est dynamique.
+- Total ≈ 220-250 mots (≈ 60 s). Rythme rapide, zéro temps mort, zéro remplissage.
+
+4) SOUS-TITRES : 2 à 3 mots-clés par scène entre *astérisques* (chiffres, noms propres, mots choc).
+
+5) FIN QUI DÉCLENCHE COMMENTAIRES (JAMAIS "abonne-toi")
+- Termine par une phrase qui donne envie de commenter ou de regarder une autre vidéo :
+  une question ouverte, un avis à trancher, une mini-énigme, un "à ton avis, …?".
+
+6) VÉRITÉ : chaque fait DOIT venir de la SOURCE. N'invente JAMAIS un chiffre/date/nom/citation.
+   Dans le doute reste général. Un fait vrai bien raconté > un faux fait spectaculaire.
+
+7) INTERDIT : remplissage ("oups", "c'est du lourd", "oui oui"), onomatopées, répétitions.
+
+=== CHOIX ADAPTATIF DU FORMAT ===
+Ne te limite PAS à un format fixe. Choisis LE format le plus viral pour CE sujet (compte à rebours,
+révélation, "la vérité cachée", storytime, "ce que personne ne remarque", face-à-face, mythe vs réalité…)
+et indique-le dans "format".
 
 RÉPONDS UNIQUEMENT avec ce JSON (aucun texte autour) :
 {{
   "titre": "identifiant court en minuscules",
   "sujet": "le sujet en une phrase (pour l'historique)",
+  "format": "le format viral choisi (2-4 mots)",
+  "ambiance": "un mot parmi: epique, mystere, hype, emotion, choc, fun",
   "scenes": [
-    {{"texte": "phrase narrée avec des *mots* en avant", "hue": 265, "image": "short vivid ENGLISH visual description of the scene, cinematic, vertical"}},
-    {{"texte": "...", "hue": 210, "image": "..."}}
+    {{"texte": "HOOK de 6-12 mots", "image": "vivid cinematic ENGLISH visual, vertical, dramatic lighting", "hue": 265}},
+    {{"texte": "phrase courte avec *mots* forts", "image": "...", "hue": 210}}
   ],
-  "caption": "légende intrigante avec 1 emoji, sans révéler la chute",
-  "hashtags": ["#pourtoi", "#fyp", "#sujet", "#niche"]
+  "caption": "légende qui intrigue + finit par une question qui appelle un commentaire, 1 emoji",
+  "hashtags": ["#pourtoi", "#fyp", "#sujet"]
 }}
-- "hue" : entier 0-359 (teinte du fond de secours), varie-le entre scènes.
-- "image" : description visuelle EN ANGLAIS, concrète et cinématographique (le système
-  décidera lui-même s'il l'utilise en image IA ou garde un fond dégradé)."""
+- 8 à 11 scènes. "image" = description visuelle EN ANGLAIS, cinématographique, DIFFÉRENTE à chaque scène
+  (pour des changements de plan fréquents). "hue" = entier 0-359, varie-le. "ambiance" sert à choisir
+  la musique et les effets sonores."""
 
 
 def _wordcount(data):
@@ -162,11 +184,18 @@ def _limit_emphasis(text, max_spans=3):
 
 
 def _clean(data, env):
-    assert data.get("scenes") and 3 <= len(data["scenes"]) <= 7, "nombre de scènes invalide"
+    assert data.get("scenes") and 4 <= len(data["scenes"]) <= 12, "nombre de scènes invalide"
     for sc in data["scenes"]:
         assert sc.get("texte"), "scène sans texte"
         sc["texte"] = _limit_emphasis(sc["texte"].strip())
         sc.setdefault("hue", random.randint(0, 359))
+    # INTERDIT : tout CTA d'abonnement (on veut des commentaires, pas "abonne-toi")
+    last = data["scenes"][-1]
+    last["texte"] = re.sub(
+        r"[^.!?]*\b(abonne[-\s]?toi|abonnez[-\s]?vous|subscribe|même heure|chaque jour)\b[^.!?]*[.!?]?",
+        "", last["texte"], flags=re.I).strip()
+    if len(re.findall(r"\w+", last["texte"])) < 4:
+        last["texte"] = "Et toi, t'en penses quoi en *commentaire* ?"
     data.setdefault("voix", env.get("VOICE", "fr-FR-RemyMultilingualNeural"))
     data.setdefault("rate", "+12%")
     data.setdefault("titre", "video-" + datetime.date.today().isoformat())
