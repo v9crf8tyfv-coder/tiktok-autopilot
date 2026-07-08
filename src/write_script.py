@@ -73,22 +73,44 @@ def wiki_extract(title):
     return None
 
 
-def pick_grounded_subject(trends, history):
-    """Choisit le sujet le plus tendance non encore traité + sa source Wikipédia.
+# Sujets sensibles à ÉCARTER automatiquement (politique, drames, santé grave, etc.)
+SENSITIVE = re.compile(
+    r"\b(rassemblement national|front national|reconquête|la france insoumise|nupes|"
+    r"le pen|bardella|macron|mélenchon|zemmour|attal|philippe|ministre|président[e]?|"
+    r"élection|présidentielle|législative|gouvernement|assemblée nationale|sénat|"
+    r"politique|parti|extrême[- ]droite|extrême[- ]gauche|manifestation|grève|"
+    r"guerre|conflit|militaire|arm[ée]e|otage|attentat|terrorist|djihad|"
+    r"mort|décès|tué|tuée|meurtre|assassinat|homicide|viol|agression|féminicide|"
+    r"génocide|nazi|hitler|shoah|esclavage|"
+    r"migrant|immigration|réfugié|"
+    r"covid|vaccin|épidémie|pandémie|virus|ebola|cancer|maladie|suicide|overdose|drogue|"
+    r"incendie|crash|accident|catastrophe|séisme|inondation|noyade)\b", re.I)
 
-    Le marché décide (ordre des tendances) ; l'historique évite les doublons exacts ;
-    Wikipédia fournit les faits pour empêcher l'IA d'inventer.
+
+def is_sensitive(text):
+    return bool(SENSITIVE.search(text or ""))
+
+
+def pick_grounded_subject(trends, history):
+    """Choisit le sujet le plus tendance NON sensible et non encore traité + source Wikipédia.
+
+    Le marché décide (ordre des tendances) ; on écarte les sujets sensibles (politique,
+    drames, santé grave…) ; l'historique évite les doublons ; Wikipédia fournit les faits.
     """
     done = " ".join(h.get("sujet", "").lower() for h in history)
     candidates = [a["article"] for a in trends.get("wikipedia_top_fr", []) if a.get("article")]
     candidates += [t["sujet"] for t in trends.get("google_trends_fr", []) if t.get("sujet")]
+    fallback = None
     for cand in candidates:
-        if cand.lower() in done:
+        if cand.lower() in done or is_sensitive(cand):
             continue
         extract = wiki_extract(cand)
         if extract:
+            if is_sensitive(extract[:400]):   # le contenu aussi doit être clean
+                continue
             return cand, extract
-    return (candidates[0] if candidates else None), None
+        fallback = fallback or cand
+    return fallback, None
 
 
 def trends_digest(trends):
