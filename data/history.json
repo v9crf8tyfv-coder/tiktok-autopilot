@@ -387,5 +387,11 @@
     "heure": 12,
     "sujet": "Fait du jour : Tadej Pogačar",
     "source": "template"
+  },
+  {
+    "date": "2026-07-27",
+    "heure": 18,
+    "sujet": "Un film de 1980 qui a créé des légendes et brisé des rêves dans le même souffle",
+    "source": "mistral+wiki"
   }
 ]
