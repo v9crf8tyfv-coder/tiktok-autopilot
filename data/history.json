@@ -489,5 +489,11 @@
     "heure": 21,
     "sujet": "Fait du jour : un fait surprenant",
     "source": "template"
+  },
+  {
+    "date": "2026-08-02",
+    "heure": 12,
+    "sujet": "Le film 2026 qui va tout casser sur Christopher Nolan et Homère",
+    "source": "mistral+wiki"
   }
 ]
