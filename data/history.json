@@ -525,5 +525,11 @@
     "heure": 21,
     "sujet": "Fait du jour : Natalia Dontcheva",
     "source": "template"
+  },
+  {
+    "date": "2026-08-04",
+    "heure": 12,
+    "sujet": "Le chef-d'œuvre caché de Chabrol et sa vengeance qui défie le temps",
+    "source": "mistral+wiki"
   }
 ]
