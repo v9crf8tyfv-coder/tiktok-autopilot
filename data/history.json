@@ -561,5 +561,11 @@
     "heure": 21,
     "sujet": "Fait du jour : La Gifle (film, 1974)",
     "source": "template"
+  },
+  {
+    "date": "2026-08-06",
+    "heure": 12,
+    "sujet": "La reine Charlotte de Mecklembourg-Strelitz : une souveraine oubliée qui a tout changé",
+    "source": "mistral+wiki"
   }
 ]
