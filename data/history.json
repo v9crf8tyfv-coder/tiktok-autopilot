@@ -591,5 +591,11 @@
     "heure": 21,
     "sujet": "Fait du jour : Yan Diomandé",
     "source": "template"
+  },
+  {
+    "date": "2026-08-08",
+    "heure": 11,
+    "sujet": "Katarzyna Niewiadoma, la cycliste polonaise qui a tout gagné en 2024",
+    "source": "mistral+wiki"
   }
 ]
