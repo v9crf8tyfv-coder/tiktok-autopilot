@@ -693,5 +693,11 @@
     "heure": 18,
     "sujet": "Fait du jour : Éclipse solaire du 12 août 2026",
     "source": "template"
+  },
+  {
+    "date": "2026-08-13",
+    "heure": 21,
+    "sujet": "L'éclipse solaire de 1999 qui a déclenché des théories apocalyptiques à travers l'Europe",
+    "source": "mistral+wiki"
   }
 ]
