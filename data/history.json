@@ -873,5 +873,11 @@
     "heure": 12,
     "sujet": "Fait du jour : Raphaël Glucksmann",
     "source": "template"
+  },
+  {
+    "date": "2026-08-24",
+    "heure": 18,
+    "sujet": "Les Oscars ont menti sur Meryl Streep pendant 40 ans",
+    "source": "mistral+wiki"
   }
 ]
