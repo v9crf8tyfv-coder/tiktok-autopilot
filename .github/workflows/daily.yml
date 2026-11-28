@@ -79,7 +79,7 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          YOUTUBE_PRIVACY: ${{ vars.YOUTUBE_PRIVACY }}
+          YOUTUBE_PRIVACY: "public"
           AI_IMAGE_PROB: "0.6"
           FONT_NAME: "Liberation Sans"
           FONT_FILE: "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
