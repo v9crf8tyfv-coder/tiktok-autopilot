@@ -99,14 +99,16 @@ def is_safe_subject(subject, extract, env):
     seulement si les mots-clés n'ont rien détecté (déjà vérifié avant l'appel).
     """
     try:
-        q = ("Sujet proposé pour une courte vidéo virale GRAND PUBLIC, légère et positive : "
-             "\"%s\".\nRésumé: %s\n\nCe sujet est-il SÛR et approprié ? Réponds NON si lié à : "
-             "politique, crime, justice, terrorisme, violence, mort, drame, accusation, sexe, "
-             "santé grave, religion clivante, personne controversée. Sinon OUI.\n"
-             "Réponds UNIQUEMENT ce JSON : {\"ok\": true} ou {\"ok\": false}."
-             % (subject, (extract or "")[:500]))
+        q = ("Sujet pour une courte vidéo virale GRAND PUBLIC, légère et fun : \"%s\". %s\n"
+             "Réponds NON si lié à : politique, crime, justice, procès, terrorisme, violence, "
+             "mort, drame, accusation, agression, sexe, santé grave, religion clivante, ou une "
+             "personne connue pour une controverse/affaire. Sinon OUI.\n"
+             "Réponds UNIQUEMENT: {\"ok\": true} ou {\"ok\": false}."
+             % (subject, (extract or "")[:280]))
         import llm
-        ans = json.loads(llm.generate(q, env=env, temperature=0, max_tokens=20))
+        # petit modèle (budget séparé du gros) + assez de tokens pour le raisonnement
+        ans = json.loads(llm.generate(q, env=env, temperature=0, max_tokens=400,
+                                      model="openai/gpt-oss-20b"))
         return bool(ans.get("ok"))
     except Exception:
         return True  # l'IA a déjà le filtre mots-clés en amont ; on ne bloque pas tout
@@ -263,23 +265,20 @@ sur ce sujet. N'invente AUCUN chiffre/date/citation précis ; dans le doute, res
 
 def gen_with_llm(env, niche, subject, source, history):
     today = datetime.date.today().isoformat()
-    if source:
-        base = PROMPT.format(niche=niche, date=today, subject=subject, source=source)
-    else:
-        # tronc commun : on réutilise les règles de PROMPT après l'en-tête ancré
-        rules = PROMPT.split("RÈGLES STRICTES :", 1)[1]
-        base = UNGROUNDED.format(niche=niche, date=today, subject=subject) + "\nRÈGLES STRICTES :" + rules
+    # source tronquée (économie de tokens : la limite Groq gratuite est par minute)
+    src = (source or "")[:900] or ("(pas de source fiable — n'utilise QUE des faits TRÈS "
+                                   "connus et incontestables, n'invente aucun chiffre/date précis)")
+    base = PROMPT.format(niche=niche, date=today, subject=subject, source=src)
     best = None
-    # jusqu'à 3 essais : on garde le script le plus long tant qu'il n'atteint pas la cible
-    for attempt in range(3):
+    # 2 essais max : on garde le plus long (la durée est recalée ensuite dans make_video)
+    for attempt in range(2):
         prompt = base if attempt == 0 else base + (
-            "\n\nATTENTION : ta version précédente ne faisait que %d mots. "
-            "Refais-la BEAUCOUP plus longue : 210-240 mots, 2-3 phrases par scène." % _wordcount(best)
-        )
+            "\n\nTa version précédente ne faisait que %d mots. Refais BEAUCOUP plus longue "
+            "(220-250 mots)." % _wordcount(best))
         data = _clean(json.loads(llm.generate(prompt, env=env)), env)
         if best is None or _wordcount(data) > _wordcount(best):
             best = data
-        if _wordcount(best) >= 190:
+        if _wordcount(best) >= 180:
             break
     return best
 
