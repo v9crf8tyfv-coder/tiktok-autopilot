@@ -11,6 +11,7 @@ Sans aucune clé : generate() lève LLMUnavailable → l'appelant bascule sur le
 """
 import json
 import re
+import time
 import os
 
 import requests
@@ -83,11 +84,19 @@ def _call_one(p, key, model, prompt, temperature, max_tokens):
             payload["reasoning_effort"] = "low"
         else:
             payload["response_format"] = {"type": "json_object"}
-        r = requests.post(
-            p["url"],
-            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
-            json=payload, timeout=90,
-        )
+        headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
+        # Limite gratuite = tokens/minute. Si 429, on attend que le quota se recharge et on réessaie.
+        for attempt in range(5):
+            r = requests.post(p["url"], headers=headers, json=payload, timeout=90)
+            if r.status_code == 429:
+                wait = r.headers.get("retry-after")
+                try:
+                    wait = float(wait)
+                except (TypeError, ValueError):
+                    wait = 12 * (attempt + 1)
+                time.sleep(min(max(wait, 3), 40))
+                continue
+            break
         if r.status_code != 200:
             raise LLMUnavailable("%s HTTP %s: %s" % (p["name"], r.status_code, r.text[:200]))
         try:
@@ -111,10 +120,11 @@ def _call_one(p, key, model, prompt, temperature, max_tokens):
         raise LLMUnavailable("réponse gemini inattendue")
 
 
-def generate(prompt, env=None, temperature=0.9, max_tokens=2048):
+def generate(prompt, env=None, temperature=0.9, max_tokens=2048, model=None):
     """Essaie chaque fournisseur ayant une clé, dans l'ordre ; renvoie le 1er qui répond.
 
     Résilient : si un fournisseur tombe (offre gratuite supprimée, quota…), on passe au suivant.
+    `model` force un modèle précis (ex. un petit modèle pour les vérifs légères = budget séparé).
     """
     env = env or os.environ
     errors = []
@@ -125,7 +135,7 @@ def generate(prompt, env=None, temperature=0.9, max_tokens=2048):
             continue
         tried = True
         try:
-            return _call_one(p, key, env.get(p["model_env"], p["model"]),
+            return _call_one(p, key, model or env.get(p["model_env"], p["model"]),
                              prompt, temperature, max_tokens)
         except LLMUnavailable as e:
             errors.append(str(e))
