@@ -91,7 +91,28 @@ def is_sensitive(text):
     return bool(SENSITIVE.search(text or ""))
 
 
-def pick_grounded_subject(trends, history):
+def is_safe_subject(subject, extract, env):
+    """Double sécurité : demande à l'IA si le sujet convient à une vidéo grand public.
+
+    Attrape les cas que les mots-clés ratent (ex. une personne connue pour une affaire
+    judiciaire, du terrorisme, un drame…). En cas d'erreur IA, on reste prudent = True
+    seulement si les mots-clés n'ont rien détecté (déjà vérifié avant l'appel).
+    """
+    try:
+        q = ("Sujet proposé pour une courte vidéo virale GRAND PUBLIC, légère et positive : "
+             "\"%s\".\nRésumé: %s\n\nCe sujet est-il SÛR et approprié ? Réponds NON si lié à : "
+             "politique, crime, justice, terrorisme, violence, mort, drame, accusation, sexe, "
+             "santé grave, religion clivante, personne controversée. Sinon OUI.\n"
+             "Réponds UNIQUEMENT ce JSON : {\"ok\": true} ou {\"ok\": false}."
+             % (subject, (extract or "")[:500]))
+        import llm
+        ans = json.loads(llm.generate(q, env=env, temperature=0, max_tokens=20))
+        return bool(ans.get("ok"))
+    except Exception:
+        return True  # l'IA a déjà le filtre mots-clés en amont ; on ne bloque pas tout
+
+
+def pick_grounded_subject(trends, history, env=None):
     """Choisit le sujet le plus tendance NON sensible et non encore traité + source Wikipédia.
 
     Le marché décide (ordre des tendances) ; on écarte les sujets sensibles (politique,
@@ -108,6 +129,8 @@ def pick_grounded_subject(trends, history):
         if extract:
             if is_sensitive(extract[:400]):   # le contenu aussi doit être clean
                 continue
+            if env is not None and not is_safe_subject(cand, extract, env):
+                continue                      # double sécurité IA (personnes controversées…)
             return cand, extract
         fallback = fallback or cand
     return fallback, None
@@ -358,7 +381,7 @@ def main():
             data = gen_presentation(env, niche)
             source = "presentation"
         else:
-            subject, src_text = pick_grounded_subject(trends, history)
+            subject, src_text = pick_grounded_subject(trends, history, env)
             if not subject:
                 raise RuntimeError("aucun sujet tendance exploitable")
             print("   sujet imposé: %s (%s)" % (subject, "ancré Wikipédia" if src_text else "sans source"))
