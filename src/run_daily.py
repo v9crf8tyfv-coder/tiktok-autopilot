@@ -49,7 +49,19 @@ def main():
         caption_file = os.path.join(ROOT, "output", TODAY, "caption.txt")
         caption = open(caption_file, encoding="utf-8").read().strip() if os.path.exists(caption_file) else ""
 
-        step("publication", ["src/publish_tiktok.py", video, caption])
+        # Publication AUTO sur YouTube Shorts (API officielle, légal) si configuré
+        if os.environ.get("YOUTUBE_REFRESH_TOKEN") or os.path.exists(
+                os.path.join(ROOT, "data", "youtube_token.json")):
+            try:
+                step("publication YouTube Shorts", ["src/youtube_upload.py", video, caption])
+            except Exception as e:
+                log("upload YouTube échoué: %s" % e)
+
+        # TikTok : tentative (fallback silencieux tant que non approuvé)
+        try:
+            step("publication TikTok", ["src/publish_tiktok.py", video, caption])
+        except Exception as e:
+            log("TikTok ignoré: %s" % e)
 
         # Livraison Discord (bot ou webhook) — toujours, en plus de la publication
         if os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("DISCORD_WEBHOOK"):
