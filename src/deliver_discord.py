@@ -130,12 +130,43 @@ def post_via_webhook(video, sujet, tags):
     return 0
 
 
+def post_notification(yt_url, sujet, tags):
+    """Notif Discord : vidéo publiée sur YouTube → juste le lien (pas le fichier)."""
+    token = os.environ.get("DISCORD_BOT_TOKEN")
+    role = os.environ.get("DISCORD_ROLE_ID", "").strip()
+    channel = os.environ["DISCORD_CHANNEL_ID"]
+    lines = []
+    if role:
+        lines.append("🔔 <@&%s>" % role)
+    lines.append("✅ **Nouvelle vidéo publiée sur YouTube !**")
+    lines.append("🎬 **%s**" % sujet)
+    lines.append(yt_url)
+    if tags:
+        lines.append("\n🏷️ **Hashtags** :\n```\n%s\n```" % tags)
+    payload = {"content": "\n".join(lines)[:1990],
+               "allowed_mentions": {"parse": [], "roles": [role] if role else []},
+               "components": [{"type": 1, "components": [
+                   {"type": 2, "style": 5, "label": "▶️ Voir sur YouTube", "url": yt_url}]}]}
+    r = requests.post("%s/channels/%s/messages" % (API, channel),
+                      headers={"Authorization": "Bot " + token, "Content-Type": "application/json"},
+                      json=payload, timeout=30)
+    print("✅ Notif YouTube postée sur Discord." if r.status_code in (200, 201)
+          else "Notif Discord: %s" % r.text[:150])
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: deliver_discord.py <video> [caption]")
         return 1
     video = sys.argv[1]
     sujet, tags = parse_caption(sys.argv[2] if len(sys.argv) > 2 else None)
+    # si la vidéo a été publiée sur YouTube → on envoie juste une NOTIF avec le lien
+    yt_file = os.path.join(os.path.dirname(video), "youtube_url.txt")
+    if os.path.exists(yt_file) and os.environ.get("DISCORD_BOT_TOKEN"):
+        yt_url = open(yt_file, encoding="utf-8").read().splitlines()[0].strip()
+        if yt_url.startswith("http"):
+            return post_notification(yt_url, sujet, tags)
     if os.environ.get("DISCORD_BOT_TOKEN"):
         return post_via_bot(video, sujet, tags)
     if os.environ.get("DISCORD_WEBHOOK"):
