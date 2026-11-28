@@ -131,7 +131,14 @@ def upload(env, video, caption):
     while resp is None:
         _, resp = req.next_chunk()
     vid = resp.get("id")
-    print("✅ Publié sur YouTube Shorts : https://youtube.com/shorts/%s" % vid)
+    link = "https://youtube.com/shorts/%s" % vid
+    # on note le lien à côté de la vidéo → Discord enverra juste une notif + ce lien
+    try:
+        with open(os.path.join(os.path.dirname(video), "youtube_url.txt"), "w") as f:
+            f.write(link + "\n" + title)
+    except Exception:
+        pass
+    print("✅ Publié sur YouTube Shorts : %s" % link)
     return 0
 
 
